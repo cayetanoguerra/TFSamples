@@ -4,7 +4,6 @@
 #
 #
 
-
 import tensorflow as tf
 import sampledata
 
