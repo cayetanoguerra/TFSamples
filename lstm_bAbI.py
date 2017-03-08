@@ -7,7 +7,7 @@
 
 import tensorflow as tf
 from itertools import chain
-from data_utils import load_task, vectorize_data
+from data_utils import load_task, vectorize_sentences
 
 
 tf.flags.DEFINE_float("learning_rate", 0.01, "Learning rate for Adam Optimizer.")
@@ -38,20 +38,22 @@ query_size = max(map(len, (q for _, q, _ in data)))
 
 num_steps = max_story_size * sentence_size + query_size
 
+S, A = vectorize_sentences(train, word_idx, sentence_size, max_story_size, num_steps)
 
-input_data = tf.placeholder(tf.int16, [None, num_steps, inputs])
-input_label = tf.placeholder(tf.int16, [None, digits])
+inputs = 1
+
+input_data = tf.placeholder(tf.float32, [None, num_steps, inputs])
+input_label = tf.placeholder(tf.float32, [None, 20])
 
 
 def inference(_input_data):
-    W_o = tf.Variable(tf.random_normal([num_hidden, 1], stddev=0.1), name='W_o')
+    W_o = tf.Variable(tf.random_normal([FLAGS.num_hidden, 20], stddev=0.1), name='W_o')
     b_o = tf.Variable(tf.zeros([1]), name='b_o')
 
-    lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=num_hidden, forget_bias=0.0,
+    lstm_cell = tf.contrib.rnn.BasicLSTMCell(num_units=FLAGS.num_hidden, forget_bias=0.0,
                                              state_is_tuple=True)  # ,activation="tanh" probar esto
 
-
-    initial_state = lstm_cell.zero_state(batch_size, tf.float32)
+    initial_state = lstm_cell.zero_state(FLAGS.batch_size, tf.float32)
     outputs = []
     state = initial_state
     with tf.variable_scope("RNN"):
@@ -69,38 +71,41 @@ def inference(_input_data):
 # Training ------------------------------------------------
 
 predicted = inference(input_data)
-cross_entropy = tf.reduce_sum(tf.square(input_label - predicted))
+cross_entropy = tf.reduce_sum(tf.square(input_label - predicted[:, 62]))
 train_step = tf.train.GradientDescentOptimizer(0.1).minimize(cross_entropy)
-accuracy = tf.reduce_sum(tf.abs(tf.round(predicted) - input_label))
+accuracy = tf.reduce_sum(tf.abs(tf.round(predicted[:, 62]) - input_label))
 
 init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
 
-for i in range(1000):
-    data, label = sampledata.create_data(batch_size)
-    sess.run(train_step, feed_dict={input_data: data, input_label: label})
-    if i % 100 == 0:
-        print "iteration: ", i, "ce: ", sess.run(cross_entropy, feed_dict={input_data: data, input_label: label})
+for j in xrange(20):
+    i = 0
+    for s, a in zip(S, A):
+        data, label = s, a
+        sess.run(train_step, feed_dict={input_data: [data], input_label: [label]})
+        i += 1
+        if i % 50 == 0:
+            print "iteration: ", i, "ce: ", sess.run(cross_entropy, feed_dict={input_data: [data], input_label: [label]})
 
 # Test ----------------------------------------------------
 
-data, label = sampledata.create_data(10)
-
-print "------------------------------"
-print "Number of errors:", sess.run(accuracy, feed_dict={input_data: data, input_label: label})
-
-data = [[[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-        [[1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [0.0, 0.0]],
-        [[1.0, 1.0], [1.0, 0.0], [0.0, 1.0], [0.0, 0.0], [1.0, 1.0], [1.0, 0.0], [0.0, 1.0], [0.0, 0.0]],
-        [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-        [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-        [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-        [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-        [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-        [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-        [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]]
-        ]
-
-print "------------------------------"
-print "Result:", sess.run(tf.round(predicted), feed_dict={input_data: data})
+# data, label = sampledata.create_data(10)
+#
+# print "------------------------------"
+# print "Number of errors:", sess.run(accuracy, feed_dict={input_data: data, input_label: label})
+#
+# data = [[[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
+#         [[1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [0.0, 0.0]],
+#         [[1.0, 1.0], [1.0, 0.0], [0.0, 1.0], [0.0, 0.0], [1.0, 1.0], [1.0, 0.0], [0.0, 1.0], [0.0, 0.0]],
+#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
+#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
+#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
+#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
+#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
+#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
+#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]]
+#         ]
+#
+# print "------------------------------"
+# print "Result:", sess.run(tf.round(predicted), feed_dict={input_data: data})

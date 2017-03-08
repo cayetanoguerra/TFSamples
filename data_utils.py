@@ -82,6 +82,7 @@ def get_stories(f, only_supporting=False):
         return parse_stories(f.readlines(), only_supporting=only_supporting)
 
 
+
 def vectorize_data(data, word_idx, sentence_size, memory_size):
     """
     Vectorize stories and queries.
@@ -121,3 +122,64 @@ def vectorize_data(data, word_idx, sentence_size, memory_size):
         Q.append(q)
         A.append(y)
     return np.array(S), np.array(Q), np.array(A)
+
+
+def vectorize_sentences(data, word_idx, sentence_size, max_story_size, num_steps):
+    """
+    Vectorize stories and queries.
+
+    If a sentence length < sentence_size, the sentence will be padded with 0's.
+
+    If a story length < memory_size, the story will be padded with empty memories.
+    Empty memories are 1-D arrays of length sentence_size filled with 0's.
+
+    The answer array is returned as a one-hot encoding.
+    :type sentence_size: object
+    """
+    S = []
+    Q = []
+    A = []
+    memory_size = max_story_size
+    for story, query, answer in data:
+        ss = []
+        for i, sentence in enumerate(story, 1): 
+            ls = max(0, sentence_size - len(sentence))
+            ss.append([word_idx[w] for w in sentence] + [0] * ls)
+
+        # take only the most recent sentences that fit in memory
+        ss = ss[::-1][:memory_size][::-1]
+
+        # pad to memory_size
+        lm = max(0, memory_size - len(ss))
+        for _ in range(lm):
+            ss.append([0] * sentence_size)
+
+        lq = max(0, sentence_size - len(query))
+        q = [word_idx[w] for w in query] + [0] * lq
+
+        y = np.zeros(len(word_idx) + 1)  # 0 is reserved for nil word
+        for a in answer:
+            y[word_idx[a]] = 1
+
+        S.append(ss)
+        Q.append(q)
+        A.append(y)
+
+    # We remove all 0's and add padding at the beginning
+
+    SQ = []
+    for story, question in zip(S, Q):
+        ss = []
+        for sentence in story:
+            #ss += filter(lambda x: x > 0, sentence)
+            ss += [[x] for x in sentence if x > 0]
+
+        #ss += filter(lambda x: x > 0, question)
+        ss += [[x] for x in question if x > 0]
+        ss = (num_steps - len(ss)) * [[0]] + ss
+        SQ.append(ss)
+
+
+
+    # return np.array(S), np.array(Q), np.array(A)
+    return np.array(SQ, dtype=np.float32), np.array(A, dtype=np.float32)
