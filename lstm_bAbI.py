@@ -9,17 +9,16 @@ import tensorflow as tf
 from itertools import chain
 from data_utils import load_task, vectorize_sentences
 
-
 tf.flags.DEFINE_float("learning_rate", 0.01, "Learning rate for Adam Optimizer.")
 tf.flags.DEFINE_float("epsilon", 1e-8, "Epsilon value for Adam Optimizer.")
 tf.flags.DEFINE_float("max_grad_norm", 40.0, "Clip gradients to this norm.")
 tf.flags.DEFINE_integer("evaluation_interval", 10, "Evaluate and print results every x epochs")
-tf.flags.DEFINE_integer("batch_size", 1, "Batch size for training.")
+tf.flags.DEFINE_integer("batch_size", 13, "Batch size for training.")
 tf.flags.DEFINE_integer("epochs", 200, "Number of epochs to train for.")
 tf.flags.DEFINE_integer("task_id", 1, "bAbI task id, 1 <= id <= 20")
 tf.flags.DEFINE_integer("random_state", None, "Random state.")
-tf.flags.DEFINE_integer("num_hidden", 50, "Number of hidden units.")
-#tf.flags.DEFINE_integer("steps", 25, "Number of steps in the LSTM.")
+tf.flags.DEFINE_integer("num_hidden", 51, "Number of hidden units.")
+# tf.flags.DEFINE_integer("steps", 25, "Number of steps in the LSTM.")
 tf.flags.DEFINE_string("data_dir", "data/tasks_1-20_v1-2/en/", "Directory containing bAbI tasks")
 FLAGS = tf.flags.FLAGS
 
@@ -64,7 +63,7 @@ def inference(_input_data):
             (cell_output, state) = lstm_cell(inp, state)
             outputs.append(tf.nn.sigmoid(tf.matmul(cell_output, W_o) + b_o))
 
-    result = tf.transpose(tf.squeeze(outputs))
+    result = tf.transpose(tf.squeeze(outputs), perm=[1, 0, 2])
     return result
 
 
@@ -79,14 +78,25 @@ init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
 
+res = sess.run(cross_entropy, feed_dict={input_data: S[0:13], input_label: A[0:13]})
+
+print res.shape
+print S[0:13].shape
+print A[0:13].shape
+
+#batches = zip(range(0, 980, FLAGS.batch_size), range(FLAGS.batch_size, 1000, FLAGS.batch_size))
+#batches = [(start, end) for start, end in batches]
+
 for j in xrange(20):
     i = 0
     for s, a in zip(S, A):
         data, label = s, a
-        sess.run(train_step, feed_dict={input_data: [data], input_label: [label]})
+        sess.run(train_step, feed_dict={input_data: S[0:13], input_label: A[0:13]})
         i += 1
         if i % 50 == 0:
-            print "iteration: ", i, "ce: ", sess.run(cross_entropy, feed_dict={input_data: [data], input_label: [label]})
+            print "iteration: ", i, "ce: ", sess.run(cross_entropy,
+                                                     feed_dict={input_data: S[0:13], input_label: A[0:13]})
+
 
 # Test ----------------------------------------------------
 

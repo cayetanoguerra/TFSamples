@@ -82,7 +82,6 @@ def get_stories(f, only_supporting=False):
         return parse_stories(f.readlines(), only_supporting=only_supporting)
 
 
-
 def vectorize_data(data, word_idx, sentence_size, memory_size):
     """
     Vectorize stories and queries.
@@ -142,7 +141,7 @@ def vectorize_sentences(data, word_idx, sentence_size, max_story_size, num_steps
     memory_size = max_story_size
     for story, query, answer in data:
         ss = []
-        for i, sentence in enumerate(story, 1): 
+        for i, sentence in enumerate(story, 1):
             ls = max(0, sentence_size - len(sentence))
             ss.append([word_idx[w] for w in sentence] + [0] * ls)
 
@@ -171,15 +170,13 @@ def vectorize_sentences(data, word_idx, sentence_size, max_story_size, num_steps
     for story, question in zip(S, Q):
         ss = []
         for sentence in story:
-            #ss += filter(lambda x: x > 0, sentence)
+            # ss += filter(lambda x: x > 0, sentence)
             ss += [[x] for x in sentence if x > 0]
 
-        #ss += filter(lambda x: x > 0, question)
+        # ss += filter(lambda x: x > 0, question)
         ss += [[x] for x in question if x > 0]
         ss = (num_steps - len(ss)) * [[0]] + ss
         SQ.append(ss)
-
-
 
     # return np.array(S), np.array(Q), np.array(A)
     return np.array(SQ, dtype=np.float32), np.array(A, dtype=np.float32)
