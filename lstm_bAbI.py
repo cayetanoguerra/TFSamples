@@ -17,7 +17,7 @@ tf.flags.DEFINE_integer("batch_size", 13, "Batch size for training.")
 tf.flags.DEFINE_integer("epochs", 200, "Number of epochs to train for.")
 tf.flags.DEFINE_integer("task_id", 1, "bAbI task id, 1 <= id <= 20")
 tf.flags.DEFINE_integer("random_state", None, "Random state.")
-tf.flags.DEFINE_integer("num_hidden", 51, "Number of hidden units.")
+tf.flags.DEFINE_integer("num_hidden", 100, "Number of hidden units.")
 # tf.flags.DEFINE_integer("steps", 25, "Number of steps in the LSTM.")
 tf.flags.DEFINE_string("data_dir", "data/tasks_1-20_v1-2/en/", "Directory containing bAbI tasks")
 FLAGS = tf.flags.FLAGS
@@ -84,38 +84,20 @@ print res.shape
 print S[0:13].shape
 print A[0:13].shape
 
-#batches = zip(range(0, 980, FLAGS.batch_size), range(FLAGS.batch_size, 1000, FLAGS.batch_size))
-#batches = [(start, end) for start, end in batches]
+batches = zip(range(0, len(S[0]), FLAGS.batch_size), range(FLAGS.batch_size, len(S[0]), FLAGS.batch_size))
+batches = [(start, end) for start, end in batches]
 
-for j in xrange(20):
-    i = 0
-    for s, a in zip(S, A):
-        data, label = s, a
-        sess.run(train_step, feed_dict={input_data: S[0:13], input_label: A[0:13]})
+
+i = 0
+for j in xrange(10000):
+    for start, end in batches:
+        sess.run(train_step, feed_dict={input_data: S[start:end], input_label: A[start:end]})
         i += 1
-        if i % 50 == 0:
+        if i % 20 == 0:
             print "iteration: ", i, "ce: ", sess.run(cross_entropy,
-                                                     feed_dict={input_data: S[0:13], input_label: A[0:13]})
+                                                     feed_dict={input_data: S[start:end], input_label: A[start:end]})
 
 
 # Test ----------------------------------------------------
 
-# data, label = sampledata.create_data(10)
-#
-# print "------------------------------"
-# print "Number of errors:", sess.run(accuracy, feed_dict={input_data: data, input_label: label})
-#
-# data = [[[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-#         [[1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [0.0, 0.0]],
-#         [[1.0, 1.0], [1.0, 0.0], [0.0, 1.0], [0.0, 0.0], [1.0, 1.0], [1.0, 0.0], [0.0, 1.0], [0.0, 0.0]],
-#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]],
-#         [[1.0, 1.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [1.0, 0.0], [0.0, 0.0]]
-#         ]
-#
-# print "------------------------------"
-# print "Result:", sess.run(tf.round(predicted), feed_dict={input_data: data})
+# TODO: do the test
